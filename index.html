@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NBA Stats Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080810;
+    --surface: #111119;
+    --card: #16161f;
+    --card2: #1c1c28;
+    --border: #252535;
+    --gold: #f0c040;
+    --green: #00c46a;
+    --text: #eeeef5;
+    --muted: #5a5a78;
+    --muted2: #888899;
+    --radius: 18px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 70% 40% at 15% 5%, rgba(240,192,64,0.07) 0%, transparent 55%),
+      radial-gradient(ellipse 60% 35% at 85% 95%, rgba(0,196,106,0.06) 0%, transparent 55%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 28px 24px 22px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-left .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(1.8rem, 5vw, 3rem);
+    letter-spacing: 5px;
+    background: linear-gradient(120deg, #f0c040 0%, #fffbe0 55%, #f0c040 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+
+  .header-left .sub {
+    font-size: 0.68rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .season-badge {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 40px;
+    padding: 8px 18px;
+    font-size: 0.72rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted2);
+    white-space: nowrap;
+  }
+
+  /* ── GRID ── */
+  .players-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 18px;
+    padding: 32px 20px 48px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* ── CARD ── */
+  .player-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  .player-card:hover {
+    transform: translateY(-5px);
+  }
+
+  .player-card.lakers { box-shadow: inset 0 0 0 2px rgba(240,192,64,0.15); }
+  .player-card.lakers:hover { box-shadow: 0 16px 48px rgba(240,192,64,0.18), inset 0 0 0 2px rgba(240,192,64,0.3); }
+  .player-card.celtics { box-shadow: inset 0 0 0 2px rgba(0,196,106,0.12); }
+  .player-card.celtics:hover { box-shadow: 0 16px 48px rgba(0,196,106,0.18), inset 0 0 0 2px rgba(0,196,106,0.3); }
+
+  /* Photo area */
+  .photo-area {
+    position: relative;
+    background: linear-gradient(180deg, #1a1a28 0%, #12121c 100%);
+    padding: 0;
+    overflow: hidden;
+    aspect-ratio: 4/3;
+  }
+
+  .photo-area img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+    display: block;
+    transition: transform 0.4s ease;
+  }
+
+  .player-card:hover .photo-area img {
+    transform: scale(1.03);
+  }
+
+  .photo-gradient {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 55%;
+    background: linear-gradient(to top, var(--card) 0%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .team-tag {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 20px;
+    backdrop-filter: blur(8px);
+  }
+
+  .lakers .team-tag { background: rgba(85,37,131,0.75); color: #d8b4ff; border: 1px solid rgba(200,154,255,0.2); }
+  .celtics .team-tag { background: rgba(0,80,40,0.75); color: #6dffb2; border: 1px solid rgba(0,196,106,0.2); }
+
+  .name-overlay {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 12px 16px 10px;
+  }
+
+  .player-firstname {
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted2);
+    line-height: 1;
+  }
+
+  .player-lastname {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.9rem;
+    letter-spacing: 2px;
+    line-height: 1;
+    color: #fff;
+  }
+
+  /* Body */
+  .card-body {
+    padding: 14px 16px 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Averages */
+  .avgs-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .avg-box {
+    background: var(--card2);
+    border-radius: 12px;
+    padding: 10px 6px;
+    text-align: center;
+    border: 1px solid var(--border);
+  }
+
+  .avg-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.7rem;
+    line-height: 1;
+  }
+
+  .lakers .avg-val { color: var(--gold); }
+  .celtics .avg-val { color: var(--green); }
+
+  .avg-lbl {
+    font-size: 0.58rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  /* Totals */
+  .totals-section {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+  }
+
+  .totals-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .totals-title {
+    font-size: 0.58rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .pj-badge {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  .lakers .pj-badge { background: rgba(240,192,64,0.12); color: var(--gold); }
+  .celtics .pj-badge { background: rgba(0,196,106,0.12); color: var(--green); }
+
+  .totals-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+
+  .total-item {
+    text-align: center;
+  }
+
+  .total-val {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .total-lbl {
+    font-size: 0.56rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* Add game button */
+  .add-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    margin-top: auto;
+  }
+
+  .lakers .add-btn { border: 1px solid rgba(240,192,64,0.2); color: rgba(240,192,64,0.6); }
+  .lakers .add-btn:hover { background: rgba(240,192,64,0.08); border-color: rgba(240,192,64,0.4); color: var(--gold); }
+  .celtics .add-btn { border: 1px solid rgba(0,196,106,0.2); color: rgba(0,196,106,0.6); }
+  .celtics .add-btn:hover { background: rgba(0,196,106,0.08); border-color: rgba(0,196,106,0.4); color: var(--green); }
+
+  /* Extra games indicator */
+  .extra-games {
+    font-size: 0.58rem;
+    letter-spacing: 1px;
+    color: var(--muted);
+    text-align: center;
+    margin-top: -4px;
+  }
+
+  /* ── MODAL ── */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.82);
+    z-index: 200;
+    backdrop-filter: blur(10px);
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+  }
+
+  @media (min-width: 600px) {
+    .overlay { align-items: center; padding: 20px; }
+  }
+
+  .overlay.open { display: flex; }
+
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px 24px 0 0;
+    width: 100%;
+    max-width: 440px;
+    padding: 28px 24px 36px;
+    position: relative;
+    animation: slideUp 0.28s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+
+  @media (min-width: 600px) {
+    .modal {
+      border-radius: 24px;
+      animation: popIn 0.28s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0.95) translateY(10px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+
+  .modal-drag {
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    margin: 0 auto 20px;
+  }
+
+  @media (min-width: 600px) { .modal-drag { display: none; } }
+
+  .modal-close {
+    position: absolute;
+    top: 16px; right: 16px;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--muted2);
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    line-height: 1;
+  }
+
+  .modal-close:hover { color: var(--text); border-color: var(--muted); }
+
+  .modal-player-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .modal-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid var(--border);
+  }
+
+  .modal-avatar img {
+    width: 100%;
+    height: 140%;
+    object-fit: cover;
+    object-position: top;
+    margin-top: -10%;
+  }
+
+  .modal-player-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 2px;
+    line-height: 1;
+  }
+
+  .modal-team {
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  .inputs-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .inp-group label {
+    display: block;
+    font-size: 0.64rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .inp-group input {
+    width: 100%;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 10px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s;
+    -moz-appearance: textfield;
+  }
+
+  .inp-group input::-webkit-inner-spin-button,
+  .inp-group input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+  .inp-group input:focus { border-color: var(--gold); }
+
+  .btn-save {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f0c040 0%, #e8a820 100%);
+    color: #000;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 3px;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+
+  .btn-save:hover { opacity: 0.9; }
+  .btn-save:active { transform: scale(0.98); }
+
+  .celtics-modal .inp-group input:focus { border-color: var(--green); }
+  .celtics-modal .btn-save {
+    background: linear-gradient(135deg, #00c46a 0%, #00a055 100%);
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(16px);
+    background: #222230;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 24px;
+    border-radius: 40px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    z-index: 300;
+    white-space: nowrap;
+  }
+
+  .toast .dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 7px;
+    vertical-align: middle;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 20px;
+    color: var(--muted);
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 500px) {
+    .players-grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 20px 12px 40px;
+    }
+
+    .avg-val { font-size: 1.35rem; }
+    .player-lastname { font-size: 1.45rem; }
+    .total-val { font-size: 0.88rem; }
+
+    .card-body { padding: 10px 10px 12px; gap: 8px; }
+    .avg-box { padding: 8px 4px; }
+    .totals-section { padding: 8px 10px; }
+    .add-btn { font-size: 0.65rem; padding: 8px; }
+
+    header { padding: 18px 16px 14px; }
+  }
+
+  @media (max-width: 360px) {
+    .players-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo">NBA TRACKER</div>
+    <div class="sub">Mis 5 jugadores favoritos</div>
+  </div>
+  <div class="season-badge">Temporada 24-25</div>
+</header>
+
+<div class="players-grid" id="grid"></div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal">
+    <div class="modal-drag"></div>
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-player-row">
+      <div class="modal-avatar"><img id="mImg" src="" alt=""></div>
+      <div>
+        <div class="modal-player-name" id="mName"></div>
+        <div class="modal-team" id="mTeam"></div>
+      </div>
+    </div>
+    <div class="inputs-grid">
+      <div class="inp-group">
+        <label>Puntos</label>
+        <input type="number" id="fPts" min="0" placeholder="0">
+      </div>
+      <div class="inp-group">
+        <label>Rebotes</label>
+        <input type="number" id="fReb" min="0" placeholder="0">
+      </div>
+      <div class="inp-group">
+        <label>Asistencias</label>
+        <input type="number" id="fAst" min="0" placeholder="0">
+      </div>
+    </div>
+    <button class="btn-save" onclick="saveGame()">GUARDAR PARTIDO</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="dot"></span><span id="toastMsg">Guardado</span></div>
+
+<footer>Stats actualizados manualmente · Datos guardados localmente</footer>
+
+<script>
+const PLAYERS = [
+  {
+    id: "luka",
+    first: "Luka", last: "Dončić",
+    team: "Lakers", num: "#77", cls: "lakers",
+    img: "https://cdn.nba.com/headshots/nba/latest/1040x760/1629029.png",
+    ppp: 32.9, rpp: 7.9, app: 8.5,
+    gp: 54, pts: 1774, reb: 427, ast: 457
+  },
+  {
+    id: "reaves",
+    first: "Austin", last: "Reaves",
+    team: "Lakers", num: "#15", cls: "lakers",
+    img: "https://cdn.nba.com/headshots/nba/latest/1040x760/1630559.png",
+    ppp: 23.9, rpp: 4.8, app: 5.5,
+    gp: 40, pts: 954, reb: 191, ast: 220
+  },
+  {
+    id: "lebron",
+    first: "LeBron", last: "James",
+    team: "Lakers", num: "#23", cls: "lakers",
+    img: "https://cdn.nba.com/headshots/nba/latest/1040x760/2544.png",
+    ppp: 21.4, rpp: 5.7, app: 7.0,
+    gp: 45, pts: 961, reb: 255, ast: 315
+  },
+  {
+    id: "tatum",
+    first: "Jayson", last: "Tatum",
+    team: "Celtics", num: "#0", cls: "celtics",
+    img: "https://cdn.nba.com/headshots/nba/latest/1040x760/1628369.png",
+    ppp: 19.7, rpp: 6.7, app: 3.7,
+    gp: 3, pts: 59, reb: 20, ast: 11
+  },
+  {
+    id: "brown",
+    first: "Jaylen", last: "Brown",
+    team: "Celtics", num: "#7", cls: "celtics",
+    img: "https://cdn.nba.com/headshots/nba/latest/1040x760/1627759.png",
+    ppp: 28.4, rpp: 7.1, app: 5.2,
+    gp: 59, pts: 1677, reb: 420, ast: 305
+  }
+];
+
+const KEY = "nba_tracker_v2";
+
+function loadData() {
+  try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; }
+}
+
+function saveData(d) {
+  localStorage.setItem(KEY, JSON.stringify(d));
+}
+
+function calcPlayer(p) {
+  const extra = (loadData()[p.id] || {}).games || [];
+  const gp  = p.gp  + extra.length;
+  const pts = p.pts + extra.reduce((s, g) => s + g.pts, 0);
+  const reb = p.reb + extra.reduce((s, g) => s + g.reb, 0);
+  const ast = p.ast + extra.reduce((s, g) => s + g.ast, 0);
+  return {
+    gp, pts, reb, ast,
+    ppp: gp ? (pts / gp).toFixed(1) : p.ppp.toFixed(1),
+    rpp: gp ? (reb / gp).toFixed(1) : p.rpp.toFixed(1),
+    app: gp ? (ast / gp).toFixed(1) : p.app.toFixed(1),
+    extra: extra.length
+  };
+}
+
+function renderAll() {
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  PLAYERS.forEach(p => {
+    const s = calcPlayer(p);
+    const card = document.createElement("div");
+    card.className = `player-card ${p.cls}`;
+    card.innerHTML = `
+      <div class="photo-area">
+        <img src="${p.img}" alt="${p.first} ${p.last}" loading="lazy" onerror="this.style.opacity='0.3'">
+        <div class="photo-gradient"></div>
+        <div class="team-tag">${p.team.toUpperCase()}</div>
+        <div class="name-overlay">
+          <div class="player-firstname">${p.first} ${p.num}</div>
+          <div class="player-lastname">${p.last}</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="avgs-row">
+          <div class="avg-box">
+            <div class="avg-val">${s.ppp}</div>
+            <div class="avg-lbl">PPP</div>
+          </div>
+          <div class="avg-box">
+            <div class="avg-val">${s.rpp}</div>
+            <div class="avg-lbl">RPP</div>
+          </div>
+          <div class="avg-box">
+            <div class="avg-val">${s.app}</div>
+            <div class="avg-lbl">APP</div>
+          </div>
+        </div>
+        <div class="totals-section">
+          <div class="totals-header">
+            <span class="totals-title">Totales de temporada</span>
+            <span class="pj-badge">${s.gp} PJ</span>
+          </div>
+          <div class="totals-row">
+            <div class="total-item">
+              <div class="total-val">${s.pts}</div>
+              <div class="total-lbl">PTS</div>
+            </div>
+            <div class="total-item">
+              <div class="total-val">${s.reb}</div>
+              <div class="total-lbl">REB</div>
+            </div>
+            <div class="total-item">
+              <div class="total-val">${s.ast}</div>
+              <div class="total-lbl">AST</div>
+            </div>
+          </div>
+        </div>
+        ${s.extra > 0 ? `<div class="extra-games">+${s.extra} partido${s.extra > 1 ? 's' : ''} registrado${s.extra > 1 ? 's' : ''}</div>` : ''}
+        <button class="add-btn" onclick="openModal('${p.id}')">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+            <path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          Registrar partido
+        </button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// Modal
+let activeId = null;
+
+function openModal(id) {
+  const p = PLAYERS.find(x => x.id === id);
+  if (!p) return;
+  activeId = id;
+
+  document.getElementById("mImg").src = p.img;
+  document.getElementById("mName").textContent = `${p.first} ${p.last}`.toUpperCase();
+  document.getElementById("mTeam").textContent = `${p.team} · ${p.num}`;
+
+  const modal = document.getElementById("modal");
+  modal.className = `modal ${p.cls === "celtics" ? "celtics-modal" : ""}`;
+
+  document.getElementById("fPts").value = "";
+  document.getElementById("fReb").value = "";
+  document.getElementById("fAst").value = "";
+
+  document.getElementById("overlay").classList.add("open");
+  setTimeout(() => document.getElementById("fPts").focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById("overlay").classList.remove("open");
+  activeId = null;
+}
+
+function saveGame() {
+  if (!activeId) return;
+  const pts = Math.max(0, parseInt(document.getElementById("fPts").value) || 0);
+  const reb = Math.max(0, parseInt(document.getElementById("fReb").value) || 0);
+  const ast = Math.max(0, parseInt(document.getElementById("fAst").value) || 0);
+
+  const data = loadData();
+  if (!data[activeId]) data[activeId] = { games: [] };
+  if (!data[activeId].games) data[activeId].games = [];
+  data[activeId].games.push({ pts, reb, ast, date: new Date().toISOString() });
+  saveData(data);
+
+  const p = PLAYERS.find(x => x.id === activeId);
+  const name = p ? p.last : "Jugador";
+  closeModal();
+  renderAll();
+  showToast(`Partido de ${name} guardado`);
+}
+
+function showToast(msg) {
+  document.getElementById("toastMsg").textContent = msg;
+  const t = document.getElementById("toast");
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2800);
+}
+
+// Close on overlay click
+document.getElementById("overlay").addEventListener("click", function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Enter to save
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape") closeModal();
+  if (e.key === "Enter" && activeId) saveGame();
+});
+
+renderAll();
+</script>
+</body>
+</html>
