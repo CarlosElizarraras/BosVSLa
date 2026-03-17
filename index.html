@@ -86,6 +86,100 @@
     white-space: nowrap;
   }
 
+  .btn-reset {
+    background: transparent;
+    border: 1px solid #ff4d4d44;
+    border-radius: 40px;
+    padding: 8px 18px;
+    font-size: 0.72rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #ff6b6b;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: 'DM Sans', sans-serif;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+  }
+  .btn-reset:hover {
+    background: #ff4d4d18;
+    border-color: #ff6b6b88;
+    color: #ff9090;
+  }
+
+  /* ── CONFIRM DIALOG ── */
+  .confirm-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .confirm-overlay.open { display: flex; }
+  .confirm-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px 28px 24px;
+    max-width: 340px;
+    width: 90%;
+    text-align: center;
+  }
+  .confirm-icon {
+    font-size: 2.2rem;
+    margin-bottom: 12px;
+  }
+  .confirm-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.5rem;
+    letter-spacing: 3px;
+    color: #ff6b6b;
+    margin-bottom: 8px;
+  }
+  .confirm-msg {
+    font-size: 0.85rem;
+    color: var(--muted2);
+    line-height: 1.5;
+    margin-bottom: 24px;
+  }
+  .confirm-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+  .confirm-cancel {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card2);
+    color: var(--muted2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .confirm-cancel:hover { background: var(--border); }
+  .confirm-ok {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    background: #ff4d4d;
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-weight: 700;
+    transition: background 0.2s;
+  }
+  .confirm-ok:hover { background: #ff2222; }
+
   /* ── GRID ── */
   .players-grid {
     position: relative;
@@ -573,7 +667,21 @@
     <div class="sub">Mis 5 jugadores favoritos</div>
   </div>
   <div class="season-badge">Temporada 24-25</div>
+  <button class="btn-reset" onclick="openConfirm()">↺ Reset</button>
 </header>
+
+<!-- Confirm Reset Dialog -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-icon">⚠️</div>
+    <div class="confirm-title">Resetear todo</div>
+    <div class="confirm-msg">Se borrarán todos los partidos registrados y las estadísticas volverán a los valores originales. Esta acción no se puede deshacer.</div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeConfirm()">Cancelar</button>
+      <button class="confirm-ok" onclick="doReset()">Resetear</button>
+    </div>
+  </div>
+</div>
 
 <div class="players-grid" id="grid"></div>
 
@@ -797,6 +905,21 @@ function showToast(msg) {
   const t = document.getElementById("toast");
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), 2800);
+}
+
+function openConfirm() {
+  document.getElementById("confirmOverlay").classList.add("open");
+}
+
+function closeConfirm() {
+  document.getElementById("confirmOverlay").classList.remove("open");
+}
+
+function doReset() {
+  localStorage.removeItem(KEY);
+  closeConfirm();
+  renderAll();
+  showToast("Stats reseteados al inicio");
 }
 
 // Close on overlay click
