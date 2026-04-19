@@ -414,6 +414,57 @@
     margin-top: -4px;
   }
 
+  /* ── SEASON / PLAYOFFS TOGGLE ── */
+  .mode-toggle {
+    display: flex;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--card2);
+  }
+
+  .mode-btn {
+    flex: 1;
+    padding: 6px 4px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .mode-btn.active {
+    background: var(--border);
+    color: var(--text);
+  }
+
+  .lakers .mode-btn.active.playoff-btn { background: rgba(240,192,64,0.18); color: var(--gold); }
+  .celtics .mode-btn.active.playoff-btn { background: rgba(0,196,106,0.18); color: var(--green); }
+
+  /* Playoffs badge on totals header */
+  .playoff-badge {
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 20px;
+    background: rgba(255,180,0,0.13);
+    color: #ffb300;
+    border: 1px solid rgba(255,180,0,0.25);
+  }
+
+  .celtics .playoff-badge {
+    background: rgba(0,196,106,0.13);
+    color: var(--green);
+    border-color: rgba(0,196,106,0.25);
+  }
+
   /* ── MODAL ── */
   .overlay {
     display: none;
@@ -584,6 +635,25 @@
   .celtics-modal .inp-group input:focus { border-color: var(--green); }
   .celtics-modal .btn-save {
     background: linear-gradient(135deg, #00c46a 0%, #00a055 100%);
+  }
+
+  /* Playoff modal accent */
+  .playoff-modal .inp-group input:focus { border-color: #ffb300; }
+  .playoff-modal .btn-save {
+    background: linear-gradient(135deg, #ffb300 0%, #e09000 100%);
+    color: #000;
+  }
+  .celtics-modal.playoff-modal .inp-group input:focus { border-color: var(--green); }
+  .celtics-modal.playoff-modal .btn-save {
+    background: linear-gradient(135deg, #00c46a 0%, #00a055 100%);
+  }
+  .playoff-modal .modal-team::after {
+    content: ' · PLAYOFFS';
+    color: #ffb300;
+    font-weight: 700;
+  }
+  .celtics-modal.playoff-modal .modal-team::after {
+    color: var(--green);
   }
 
   /* ── TOAST ── */
@@ -765,6 +835,9 @@ const PLAYERS = [
 
 const KEY = "nba_tracker_v2";
 
+// Per-card view mode: 'season' | 'playoffs'
+const cardMode = {};
+
 function loadData() {
   try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; }
 }
@@ -788,13 +861,46 @@ function calcPlayer(p) {
   };
 }
 
+function calcPlayoffs(p) {
+  const games = (loadData()[p.id] || {}).playoffs || [];
+  const gp  = games.length;
+  const pts = games.reduce((s, g) => s + g.pts, 0);
+  const reb = games.reduce((s, g) => s + g.reb, 0);
+  const ast = games.reduce((s, g) => s + g.ast, 0);
+  return {
+    gp, pts, reb, ast,
+    ppp: gp ? (pts / gp).toFixed(1) : "—",
+    rpp: gp ? (reb / gp).toFixed(1) : "—",
+    app: gp ? (ast / gp).toFixed(1) : "—",
+  };
+}
+
+function toggleMode(id, mode) {
+  cardMode[id] = mode;
+  renderAll();
+}
+
 function renderAll() {
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
   PLAYERS.forEach(p => {
+    const mode = cardMode[p.id] || 'season';
     const s = calcPlayer(p);
+    const pl = calcPlayoffs(p);
+    const isPlayoffs = mode === 'playoffs';
+    const d = isPlayoffs ? pl : s;
+
     const card = document.createElement("div");
     card.className = `player-card ${p.cls}`;
+
+    const totalHeader = isPlayoffs
+      ? `<span class="totals-title">Totales playoffs</span><span class="playoff-badge">PLAYOFFS</span>`
+      : `<span class="totals-title">Totales de temporada</span><span class="pj-badge">${s.gp} PJ</span>`;
+
+    const pjPlayoffs = isPlayoffs
+      ? `<div style="text-align:right;font-size:0.62rem;font-weight:700;letter-spacing:1px;padding:2px 8px;border-radius:20px;display:inline-block;" class="pj-badge">${pl.gp} PJ</div>`
+      : '';
+
     card.innerHTML = `
       <div class="photo-area">
         <img src="${p.img}" alt="${p.first} ${p.last}" loading="lazy" onerror="this.style.opacity='0.3'">
@@ -806,46 +912,51 @@ function renderAll() {
         </div>
       </div>
       <div class="card-body">
+        <div class="mode-toggle">
+          <button class="mode-btn ${!isPlayoffs ? 'active' : ''}" onclick="toggleMode('${p.id}','season')">Temporada</button>
+          <button class="mode-btn playoff-btn ${isPlayoffs ? 'active' : ''}" onclick="toggleMode('${p.id}','playoffs')">Playoffs</button>
+        </div>
         <div class="avgs-row">
           <div class="avg-box">
-            <div class="avg-val">${s.ppp}</div>
+            <div class="avg-val">${d.ppp}</div>
             <div class="avg-lbl">PPP</div>
           </div>
           <div class="avg-box">
-            <div class="avg-val">${s.rpp}</div>
+            <div class="avg-val">${d.rpp}</div>
             <div class="avg-lbl">RPP</div>
           </div>
           <div class="avg-box">
-            <div class="avg-val">${s.app}</div>
+            <div class="avg-val">${d.app}</div>
             <div class="avg-lbl">APP</div>
           </div>
         </div>
         <div class="totals-section">
           <div class="totals-header">
-            <span class="totals-title">Totales de temporada</span>
-            <span class="pj-badge">${s.gp} PJ</span>
+            ${totalHeader}
+            ${isPlayoffs ? `<span class="pj-badge">${pl.gp} PJ</span>` : ''}
           </div>
           <div class="totals-row">
             <div class="total-item">
-              <div class="total-val">${s.pts}</div>
+              <div class="total-val">${d.pts}</div>
               <div class="total-lbl">PTS</div>
             </div>
             <div class="total-item">
-              <div class="total-val">${s.reb}</div>
+              <div class="total-val">${d.reb}</div>
               <div class="total-lbl">REB</div>
             </div>
             <div class="total-item">
-              <div class="total-val">${s.ast}</div>
+              <div class="total-val">${d.ast}</div>
               <div class="total-lbl">AST</div>
             </div>
           </div>
         </div>
-        ${s.extra > 0 ? `<div class="extra-games">+${s.extra} partido${s.extra > 1 ? 's' : ''} registrado${s.extra > 1 ? 's' : ''}</div>` : ''}
-        <button class="add-btn" onclick="openModal('${p.id}')">
+        ${!isPlayoffs && s.extra > 0 ? `<div class="extra-games">+${s.extra} partido${s.extra > 1 ? 's' : ''} registrado${s.extra > 1 ? 's' : ''}</div>` : ''}
+        ${isPlayoffs && pl.gp > 0 ? `<div class="extra-games">${pl.gp} partido${pl.gp > 1 ? 's' : ''} de playoffs registrado${pl.gp > 1 ? 's' : ''}</div>` : ''}
+        <button class="add-btn" onclick="openModal('${p.id}', '${mode}')">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
             <path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
           </svg>
-          Registrar partido
+          ${isPlayoffs ? 'Registrar partido playoff' : 'Registrar partido'}
         </button>
       </div>
     `;
@@ -855,18 +966,23 @@ function renderAll() {
 
 // Modal
 let activeId = null;
+let activeMode = 'season';
 
-function openModal(id) {
+function openModal(id, mode) {
   const p = PLAYERS.find(x => x.id === id);
   if (!p) return;
   activeId = id;
+  activeMode = mode || 'season';
 
   document.getElementById("mImg").src = p.img;
   document.getElementById("mName").textContent = `${p.first} ${p.last}`.toUpperCase();
   document.getElementById("mTeam").textContent = `${p.team} · ${p.num}`;
 
   const modal = document.getElementById("modal");
-  modal.className = `modal ${p.cls === "celtics" ? "celtics-modal" : ""}`;
+  const isPlayoffs = activeMode === 'playoffs';
+  const celticsClass = p.cls === "celtics" ? "celtics-modal" : "";
+  const playoffClass = isPlayoffs ? "playoff-modal" : "";
+  modal.className = `modal ${celticsClass} ${playoffClass}`.trim();
 
   document.getElementById("fPts").value = "";
   document.getElementById("fReb").value = "";
@@ -888,16 +1004,24 @@ function saveGame() {
   const ast = Math.max(0, parseInt(document.getElementById("fAst").value) || 0);
 
   const data = loadData();
-  if (!data[activeId]) data[activeId] = { games: [] };
-  if (!data[activeId].games) data[activeId].games = [];
-  data[activeId].games.push({ pts, reb, ast, date: new Date().toISOString() });
+  if (!data[activeId]) data[activeId] = {};
+
+  if (activeMode === 'playoffs') {
+    if (!data[activeId].playoffs) data[activeId].playoffs = [];
+    data[activeId].playoffs.push({ pts, reb, ast, date: new Date().toISOString() });
+  } else {
+    if (!data[activeId].games) data[activeId].games = [];
+    data[activeId].games.push({ pts, reb, ast, date: new Date().toISOString() });
+  }
+
   saveData(data);
 
   const p = PLAYERS.find(x => x.id === activeId);
   const name = p ? p.last : "Jugador";
+  const label = activeMode === 'playoffs' ? 'Playoff' : 'Partido';
   closeModal();
   renderAll();
-  showToast(`Partido de ${name} guardado`);
+  showToast(`${label} de ${name} guardado`);
 }
 
 function showToast(msg) {
